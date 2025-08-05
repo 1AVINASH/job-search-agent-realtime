@@ -14,3 +14,4 @@ output/**/*
 models/*
 !models/**/.gitkeep
 node_modules/
+**docker-compose.*.yml
