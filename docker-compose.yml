@@ -1,0 +1,31 @@
+# docker-compose.yaml
+version: "3.8"
+services:
+  job-scraper:
+    image: job_search_agent:latest
+    volumes:
+      - ./output:/output
+      - ./app:/app
+    build:
+      context: ./app
+    working_dir: /app
+    ports:
+      - "8003:8000"
+    environment:
+      - MODE=SCRAPE
+    command: uv run main.py
+      
+  job-parser:
+    image: job_search_agent:latest
+    volumes:
+      - ./output:/output
+      - ./app:/app
+    build:
+      context: ./app
+    working_dir: /app
+    ports:
+      - "8004:8000"
+    environment:
+      - MODE=PARSE
+      - FILENAME=remote_jobs.csv
+    command: uv run main.py
