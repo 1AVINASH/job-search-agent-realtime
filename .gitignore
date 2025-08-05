@@ -12,4 +12,5 @@ output/**/*
 !output/*/
 !output/**/.gitkeep
 models/*
+!models/**/.gitkeep
 node_modules/
