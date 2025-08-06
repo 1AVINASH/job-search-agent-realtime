@@ -4,8 +4,7 @@ import glob
 import pandas as pd
 
 class JobsSpreadsheetParser:
-    def __init__(self, file_name):
-        self.file_name = file_name
+    def __init__(self): ...
 
     def _get_files_to_be_parsed(self):
         raw_files_folder = "/output/raw/"
@@ -51,4 +50,3 @@ class JobsSpreadsheetParser:
             parsed_df = self._parse_single_file(df)
             parsed_df.to_csv(f"/output/parsed/{file}")
             print("Parsed Files")
-            # df.to_csv(f"/output/parsed/{self.file_name}")
