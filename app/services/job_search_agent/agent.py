@@ -65,8 +65,7 @@ class JobSearchAgent:
         current_url: Optional[str]
         current_html: Optional[str]
         current_text: Optional[str]
-        current_info: Optional[list]
-        current_letters: Optional[list]
+        current_info: Optional[dict]
 
     # --- NODES ---
 
@@ -130,10 +129,9 @@ class JobSearchAgent:
             letter_chain = LLMChain(llm=self.llm, prompt=cover_letter_template)
             job = state["current_info"]
             current_infos = json.loads(state["current_info"]).get("jobs")
-            letters = []
 
             if type(current_infos)!=list:
-                return {**state, "current_letters": letters}
+                return state
             for idx, ci in enumerate(current_infos):
                 print(ci)
                 letter = letter_chain.run(ci)
@@ -151,7 +149,6 @@ class JobSearchAgent:
             job = {}
             job["current_info"] = state["current_info"]
             job["url"] = state["current_url"]
-            job["letters"] = json.dumps(state["current_letters"])
             all_jobs.append(job)
         except Exception as e:
             print(traceback.format_exc())
@@ -193,15 +190,19 @@ class JobSearchAgent:
         self.app = self.workflow.compile()
 
     def run(self):
-        state = {
-            "urls": [],
-            "job_data": []
-        }
+        final_jobs = []
 
-        final_state = self.app.invoke(state, {"recursion_limit": 100})
+        for _ in range(10):
+            state = {
+                "urls": [],
+                "job_data": []
+            }
+
+            final_state = self.app.invoke(state, {"recursion_limit": 100})
+            final_jobs.extend(final_state.get("job_data") or [])
 
         # Save to CSV
-        df = pd.DataFrame(final_state["job_data"])
+        df = pd.DataFrame(final_jobs)
         current_datetime = datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%d-%b-%YT%H:%M:%S")
         file_location = f"/output/raw/remote_jobs-{current_datetime}.csv"
         df.to_csv(file_location, index=False)

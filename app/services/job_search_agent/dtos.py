@@ -12,6 +12,7 @@ class JobDetails(BaseModel):
     recent_feature: str = Field(description="A recent product or feature the company has launched or is working on that is exciting.")
     metadata: Optional[dict] = Field(description="Extra details about the company that you deem relevant.")
     summary: str = Field(description="A 3-liner summary of the job and company that will eventually be used in my cover letter.")
+    job_link: str = Field(description="The link for applying to the job")
 
 class JobList(BaseModel):
     jobs: List[JobDetails]
