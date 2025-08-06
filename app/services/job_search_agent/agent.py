@@ -1,5 +1,8 @@
+import ast
 import traceback
 import json
+import pytz
+import re
 
 from langchain_community.tools import TavilySearchResults
 from langchain.agents import initialize_agent, AgentType
@@ -11,7 +14,7 @@ from langchain.chains import LLMChain
 from langchain_community.tools.playwright import NavigateTool, ExtractTextTool
 from langchain_community.tools import TavilySearchResults
 import pandas as pd
-import uuid
+from datetime import datetime
 from services.job_search_agent.templates import REMOTE_MAIL, JOBS_PARSER
 from playwright.sync_api import sync_playwright
 from langchain.output_parsers import PydanticOutputParser
@@ -22,6 +25,7 @@ class JobSearchAgent:
     def __init__(self):
         self._initialize_scraper()
         self._initialize_workflow()
+        self.count = 0
 
     @property
     def llm(self):
@@ -31,6 +35,20 @@ class JobSearchAgent:
             temperature=0,
             model="gpt-4o-mini",
         )
+    
+    @staticmethod
+    def __clean_string(text):
+        # The string is first encoded to bytes using 'latin1'
+        # and then decoded using 'unicode_escape', which interprets the escape sequences.
+        try:
+            pattern = r"---(.*?)---"
+            matched = re.findall(pattern, text, re.DOTALL)
+
+            # return ast.literal_eval(escaped_text)
+            return matched[0].strip("\n\n")
+        except Exception as e:
+            print(f"Escaped Text: {text}")
+            raise e
 
     def _initialize_scraper(self):
         playwright = sync_playwright().start()
@@ -55,7 +73,7 @@ class JobSearchAgent:
     # 1. Search jobs and return URLs
     def search_jobs(self, state: GraphState) -> GraphState:
         search = TavilySearchResults()
-        results = search.invoke({"query": "remote software engineer jobs at recently funded startups"})
+        results = search.invoke({"query": "Remote software engineer jobs (contract) at recently funded startups"})
         urls = [r['url'] for r in results if 'url' in r]
         print(f"Total urls found: {len(urls)}")
         return {**state, "urls": urls}
@@ -79,12 +97,14 @@ class JobSearchAgent:
             text = self.text_extracter.invoke({})
         except Exception as e:
             print(f"Ran into an error while visiting page {e}")
+        # print(text)
         return {**state, "current_text": text}
 
 
     def parse_job_info(self, state: GraphState) -> GraphState:
         parser = PydanticOutputParser(pydantic_object=JobList)
         # 4. Parse job into structured data
+
         parse_prompt = PromptTemplate.from_template(
             template=JOBS_PARSER,
             partial_variables={"format_instructions": parser.get_format_instructions()}
@@ -97,6 +117,7 @@ class JobSearchAgent:
         except Exception as e:
             print(f"Ran into an error while visiting page {e}")
             parsed = json.dumps({})
+        self.count+=1
         return {**state, "current_info": parsed}
 
     # 5. Generate cover letter
@@ -113,33 +134,32 @@ class JobSearchAgent:
 
             if type(current_infos)!=list:
                 return {**state, "current_letters": letters}
-            for ci in current_infos:
+            for idx, ci in enumerate(current_infos):
+                print(ci)
                 letter = letter_chain.run(ci)
-                letters.append(letter)
-            return {**state, "current_letters": letters}
+                cleaned_letter = self.__clean_string(letter)
+                current_infos[idx] = {**current_infos[idx], "cover_letter": cleaned_letter}
+            state["current_info"] = json.dumps({"jobs": current_infos}, ensure_ascii=False)
         except Exception as e:
             print(traceback.format_exc())
-            import pdb;pdb.set_trace()
-            ...
+        return state
 
     # 6. Save result
     def save_result(self, state: GraphState) -> GraphState:
+        all_jobs = state.get("job_data", [])
         try:
             job = {}
             job["current_info"] = state["current_info"]
             job["url"] = state["current_url"]
             job["letters"] = json.dumps(state["current_letters"])
-            all_jobs = state.get("job_data", [])
             all_jobs.append(job)
-            return {**state, "job_data": all_jobs}
         except Exception as e:
             print(traceback.format_exc())
-            import pdb;pdb.set_trace()
-            ...
+        return {**state, "job_data": all_jobs}
 
     # Conditional loop or end
     def has_more_urls(self, state: GraphState):
-        if state["urls"]:
+        if state["urls"] and self.count<2:
             return "visit"
         else:
             return END
@@ -182,7 +202,8 @@ class JobSearchAgent:
 
         # Save to CSV
         df = pd.DataFrame(final_state["job_data"])
-        file_location = f"/output/raw/remote_jobs-{uuid.uuid4()}.csv"
+        current_datetime = datetime.now(pytz.timezone('Asia/Kolkata')).strftime("%d-%b-%YT%H:%M:%S")
+        file_location = f"/output/raw/remote_jobs-{current_datetime}.csv"
         df.to_csv(file_location, index=False)
 
         print("Saved jobs:", len(df))
