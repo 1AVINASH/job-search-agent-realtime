@@ -3,7 +3,9 @@ set -e  # exit on error
 set -o pipefail
 
 echo "Starting job scraper"
-docker compose up job-scraper --abort-on-container-exit
+docker compose up job-scraper --abort-on-container-exit &
+docker compose up linkedin-job-scraper --abort-on-container-exit &
+wait
 
 echo "Starting job parser"
 docker compose up job-parser --abort-on-container-exit
