@@ -27,5 +27,4 @@ services:
       - "8004:8000"
     environment:
       - MODE=PARSE
-      - FILENAME=remote_jobs.csv
     command: uv run main.py
