@@ -30,6 +30,10 @@ class JobSearchAgent:
     @property
     def max_jobs_to_scrape(self):
         return os.getenv("MAX_JOBS_TO_SCRAPE") or 25
+    
+    @property
+    def search_query(self):
+        return os.getenv("JOB_SEARCH_QUERY") or "Software engineer jobs (contract) at recently funded startups"
 
     @property
     def llm(self):
@@ -76,7 +80,7 @@ class JobSearchAgent:
     # 1. Search jobs and return URLs
     def search_jobs(self, state: GraphState) -> GraphState:
         search = TavilySearchResults()
-        results = search.invoke({"query": "Remote software engineer jobs (contract) at recently funded startups"})
+        results = search.invoke({"query": self.search_query})
         urls = [r['url'] for r in results if 'url' in r]
         print(f"Total urls found: {len(urls)}")
         return {**state, "urls": urls}
