@@ -1,4 +1,4 @@
-import ast
+import os
 import traceback
 import json
 import pytz
@@ -25,7 +25,11 @@ class JobSearchAgent:
     def __init__(self):
         self._initialize_scraper()
         self._initialize_workflow()
-        self.count = 0
+        self.jobs_scraped = 0
+    
+    @property
+    def max_jobs_to_scrape(self):
+        return os.getenv("MAX_JOBS_TO_SCRAPE") or 25
 
     @property
     def llm(self):
@@ -116,7 +120,6 @@ class JobSearchAgent:
         except Exception as e:
             print(f"Ran into an error while visiting page {e}")
             parsed = json.dumps({})
-        self.count+=1
         return {**state, "current_info": parsed}
 
     # 5. Generate cover letter
@@ -137,6 +140,7 @@ class JobSearchAgent:
                 letter = letter_chain.run(ci)
                 cleaned_letter = self.__clean_string(letter)
                 current_infos[idx] = {**current_infos[idx], "cover_letter": cleaned_letter}
+                self.jobs_scraped+=1
             state["current_info"] = json.dumps({"jobs": current_infos}, ensure_ascii=False)
         except Exception as e:
             print(traceback.format_exc())
@@ -156,7 +160,7 @@ class JobSearchAgent:
 
     # Conditional loop or end
     def has_more_urls(self, state: GraphState):
-        if state["urls"] and self.count<2:
+        if state["urls"] and self.jobs_scraped<2:
             return "visit"
         else:
             return END
@@ -192,7 +196,7 @@ class JobSearchAgent:
     def run(self):
         final_jobs = []
 
-        for _ in range(10):
+        while self.jobs_scraped<self.max_jobs_to_scrape:
             state = {
                 "urls": [],
                 "job_data": []
