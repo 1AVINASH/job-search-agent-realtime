@@ -29,7 +29,7 @@ class JobSearchAgent:
     
     @property
     def max_jobs_to_scrape(self):
-        return os.getenv("MAX_JOBS_TO_SCRAPE") or 25
+        return int(os.getenv("MAX_JOBS_TO_SCRAPE") or 25)
     
     @property
     def search_query(self):
