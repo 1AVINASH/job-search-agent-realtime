@@ -15,7 +15,7 @@ from langchain_community.tools.playwright import NavigateTool, ExtractTextTool
 from langchain_community.tools import TavilySearchResults
 import pandas as pd
 from datetime import datetime
-from services.job_search_agent.templates import Templates
+from utils.templates import templates
 from playwright.sync_api import sync_playwright
 from langchain.output_parsers import PydanticOutputParser
 from services.job_search_agent.dtos import JobDetails, JobList
@@ -33,7 +33,7 @@ class JobSearchAgent:
     
     @property
     def search_query(self):
-        return os.getenv("JOB_SEARCH_QUERY") or "Software engineer jobs (contract) at recently funded startups"
+        return templates.job_search_query
 
     @property
     def llm(self):
@@ -113,7 +113,7 @@ class JobSearchAgent:
         # 4. Parse job into structured data
 
         parse_prompt = PromptTemplate.from_template(
-            template=Templates.JOBS_PARSER,
+            template=templates.jobs_parser,
             partial_variables={"format_instructions": parser.get_format_instructions()}
         )
         try:
@@ -131,7 +131,7 @@ class JobSearchAgent:
     def generate_letter(self, state: GraphState) -> GraphState:
         try:
             cover_letter_template = PromptTemplate.from_template(
-                template=Templates.REMOTE_MAIL
+                template=templates.remote_mail
             )
             letter_chain = LLMChain(llm=self.llm, prompt=cover_letter_template)
             job = state["current_info"]
