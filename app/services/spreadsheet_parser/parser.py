@@ -27,7 +27,7 @@ class JobsSpreadsheetParser:
         for _, row in df.iterrows():
             scraped_from_url = row["url"]
             current_info = json.loads(row["current_info"])
-            if type(current_info)!=dict:
+            if type(current_info)!=dict or not current_info:
                 continue
             jobs: List[Any] = current_info["jobs"]
             for job in jobs:
@@ -45,6 +45,7 @@ class JobsSpreadsheetParser:
         files_to_parse = self._get_files_to_be_parsed()
         print(f"Files to parse: {files_to_parse}")
         for file in files_to_parse:
+            print(f"Parsing file {file}")
             df = pd.read_csv(f"/output/raw/{file}")
             # print(df)
             parsed_df = self._parse_single_file(df)
