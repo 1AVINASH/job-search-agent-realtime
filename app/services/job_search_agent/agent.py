@@ -134,18 +134,16 @@ class JobSearchAgent:
                 template=templates.remote_mail
             )
             letter_chain = LLMChain(llm=self.llm, prompt=cover_letter_template)
-            job = state["current_info"]
-            current_infos = json.loads(state["current_info"]).get("jobs")
+            jobs = json.loads(state["current_info"]).get("jobs")
 
-            if type(current_infos)!=list:
+            if type(jobs)!=list:
                 return state
-            for idx, ci in enumerate(current_infos):
-                print(ci)
-                letter = letter_chain.run(ci)
+            for idx, job in enumerate(jobs):
+                letter = letter_chain.run(job)
                 cleaned_letter = self.__clean_string(letter)
-                current_infos[idx] = {**current_infos[idx], "cover_letter": cleaned_letter}
+                jobs[idx] = {**jobs[idx], "cover_letter": cleaned_letter}
                 self.jobs_scraped+=1
-            state["current_info"] = json.dumps({"jobs": current_infos}, ensure_ascii=False)
+            state["current_info"] = json.dumps({"jobs": jobs}, ensure_ascii=False)
         except Exception as e:
             print(traceback.format_exc())
         return state
@@ -164,7 +162,7 @@ class JobSearchAgent:
 
     # Conditional loop or end
     def has_more_urls(self, state: GraphState):
-        if state["urls"] and self.jobs_scraped<2:
+        if state["urls"] and self.jobs_scraped<self.max_jobs_to_scrape:
             return "visit"
         else:
             return END
@@ -201,6 +199,9 @@ class JobSearchAgent:
         final_jobs = []
 
         while self.jobs_scraped<self.max_jobs_to_scrape:
+            print("---"*100)
+            print("Starting Again")
+            print("---"*100)
             state = {
                 "urls": [],
                 "job_data": []
