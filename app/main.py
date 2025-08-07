@@ -15,7 +15,7 @@ def main():
         job_search_agent = JobSearchLinkedAgent()
         job_search_agent.run()
     elif os.getenv("MODE")=="PARSE":
-        parser = JobsSpreadsheetParser(file_name=os.getenv("FILENAME"))
+        parser = JobsSpreadsheetParser()
         parser.parse()
     else:
         return "Mode not allowed"
